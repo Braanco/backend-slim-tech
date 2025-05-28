@@ -1,0 +1,62 @@
+HttpClient httpClient = HttpClient.newHttpClient();
+        HttpRequest httpRequest = HttpRequest.newBuilder().uri(URI.create("https://viacep.com.br/ws/01001000/json/"))
+                .build();
+        HttpResponse<String> httpResponse = null;
+        try {
+            httpResponse = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+
+            Map<String,String> map = new HashMap<>();
+            map.put("cep","");
+            ObjectMapper objectMapper = new ObjectMapper();
+            HashMap hashMap = objectMapper.readValue(httpResponse.body(), HashMap.class);
+            map.putAll(hashMap);
+            System.out.println(map);
+            httpResponse.body();
+
+            return httpResponse.body();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+
+
+
+
+
+        public List<JsonFormat> requisicao(String prompt) {
+                Mono<String> stringMono = this.webClient.post().uri("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + keySecret)
+                        .header("Content-Type", "application/json")
+                        .bodyValue(prompt)
+                        .retrieve()
+                        .bodyToMono(String.class);
+                String response = stringMono.block();
+                List<JsonFormat> respostas = this.transformarARespostaEmLista(response);
+                return respostas;
+
+            }
+
+
+
+            public List<JsonFormat> transformarARespostaEmLista(String response) {
+                    Content mapper = this.mapperJson(response, Content.class);
+                    String text = mapper.getCandidates().get(0).content().parts().get(0).text().toString();
+                    String substring = text.substring(11, text.length() - 6);
+                    String[] split = substring.split("(?<!\\{[^\\}]),(?![^\\{]*\\})");
+                    List<JsonFormat> list = list(split);
+                    return list;
+
+
+                }
+
+
+
+             //Percorre a lista e transformar ela em uma lista de Json
+                public List<JsonFormat> list(String[] arrays) {
+                    List<JsonFormat> list = new ArrayList<>();
+                    for (Object s : Arrays.asList(arrays)) {
+                        JsonFormat mapper = this.mapperJson(String.valueOf(s), JsonFormat.class);
+                        list.add(mapper);
+                    }
+                    return list;
+                }
