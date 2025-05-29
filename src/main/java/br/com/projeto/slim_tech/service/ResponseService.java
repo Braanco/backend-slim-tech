@@ -32,7 +32,11 @@ public class ResponseService {
     private final String urlBase = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=";
     private static HttpClient httpClient = HttpClient.newBuilder().build();
     private static final Logger logger = LoggerFactory.getLogger(ResponseService.class);
+    private ChatTableService chatTableService;
 
+    public ResponseService(ChatTableService chatTableService) {
+        this.chatTableService = chatTableService;
+    }
 
     public String coletaDeDados(RespostaDto body) {
         logger.info("coleta dos dados:");
@@ -87,6 +91,7 @@ public class ResponseService {
 
             logger.debug("Resposta recebida da IA: {}", response);
             logger.info("Transformando resposta em lista de ResponseDTO.");
+
             return transformarResponseEmLista(response);
 
         } catch (IOException e) {
@@ -103,6 +108,7 @@ public class ResponseService {
         HttpRequest httpRequest = this.criarRequest(this.urlBase, this.keySecret, prompt);
         HttpResponse<String> httpResponse = null;
         httpResponse = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+        this.chatTableService.saveChat("...",prompt);
         return httpResponse.body();
 
     }
@@ -128,6 +134,9 @@ public class ResponseService {
 
         String substring = response.substring(8, response.length() - 4).trim();
         List<ResponseDTO> list = (List<ResponseDTO>) mapperJson(substring, ResponseDTO.class);
+        for (ResponseDTO text : list){
+            this.chatTableService.saveChat(text.toString(),"...");
+        }
         return list;
 
     }

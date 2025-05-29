@@ -1,5 +1,7 @@
 package br.com.projeto.slim_tech.service;
 
+import br.com.projeto.slim_tech.GeminiRequest;
+import br.com.projeto.slim_tech.domain.ChatTable;
 import br.com.projeto.slim_tech.domain.Content;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
@@ -18,57 +20,48 @@ public class ChatService {
     private ResponseService responseService;
 
     private final String urlBase = "https://generativelanguage.googleapis.com"; // URL base para a API Gemini
-
-    public ChatService(WebClient.Builder webClientBuilder, ResponseService responseService) {
+    private ChatTableService chatTableService;
+    public ChatService(WebClient.Builder webClientBuilder, ResponseService responseService, ChatTableService chatTableService) {
         this.webClient = webClientBuilder.baseUrl(urlBase).build();
         this.responseService = responseService;
+        this.chatTableService = chatTableService;
     }
 
 
     public String chat(List<Map<String, String>> historico, Object conversaUser) {
-        // Construção do prompt JSON
-        StringBuilder promptBuilder = new StringBuilder();
+        
 
-        promptBuilder.append("{")
-                .append("\"contents\": [{")
-                .append("\"parts\": [")
-                .append("{\"text\": \"")
-                .append("Esta é uma conversa contínua. O usuário e a IA têm trocado as seguintes mensagens:\n")
-                .append("me der mensagens curtas.");
+        StringBuilder textoPrompt = new StringBuilder();
+        textoPrompt.append("Esta é uma conversa contínua:\n");
 
-
-        for (Map<String,String> msg : historico){
-            promptBuilder.append("model: ").append(msg.get("model")).append("\n");
-            promptBuilder.append("user: ").append(msg.get("user"));
+        for (ChatTable chatTable : chatTableService.recoverChat()) {
+            textoPrompt.append("model: ").append(chatTable.getModel()).append("\n");
+            textoPrompt.append("user: ").append(chatTable.getUser()).append("\n");
         }
-        // A última mensagem do usuário
-        System.out.println(historico.getLast().get("user"));
-        promptBuilder.append("\n")
-                .append("Agora o usuário diz: ")
 
-                .append(conversaUser.toString()) // Última mensagem enviada
-                .append("\"")
-                .append("}]")
-                .append("}]")
-                .append("}");
+        textoPrompt.append("\nAgora o usuário diz: ").append(conversaUser.toString());
 
-        String promptJson = promptBuilder.toString();  // Finaliza o JSON
+        GeminiRequest.Part part = new GeminiRequest.Part(textoPrompt.toString());
+        GeminiRequest.Content content = new GeminiRequest.Content(List.of(part));
+        GeminiRequest request = new GeminiRequest(List.of(content));
 
         try {
             // Envia a requisição para a API Gemini
             String responseJson = webClient.post()
                     .uri("/v1beta/models/gemini-2.0-flash:generateContent?key=" + keySecret)
                     .contentType(MediaType.APPLICATION_JSON)
-                    .bodyValue(promptJson)
+                    .bodyValue(request)
                     .retrieve()
                     .bodyToMono(String.class)
                     .block();  // Bloqueia até receber a resposta da API
 
             // Trata a resposta da IA
-            Content content = responseService.mapperJson(responseJson, Content.class);
+            Content contents = responseService.mapperJson(responseJson, Content.class);
+            String text = contents.getCandidates().get(0).content().parts().get(0).text();
 
+            this.chatTableService.saveChat(text,conversaUser.toString());
             // Retorna o texto da primeira resposta da IA
-            return content.getCandidates().get(0).content().parts().get(0).text();
+            return text;
 
         } catch (Exception e) {
             // Em caso de erro ao chamar a API ou processar a resposta
