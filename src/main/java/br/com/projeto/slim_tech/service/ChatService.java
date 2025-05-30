@@ -28,10 +28,12 @@ public class ChatService {
     }
 
 
-    public String chat(List<Map<String, String>> historico, Object conversaUser) {
-        
+    public String chat(Object conversaUser) {
+
 
         StringBuilder textoPrompt = new StringBuilder();
+        textoPrompt.append("Apresente a resposta como um texto corrido, em linguagem natural, sem usar formato de lista ou JSON.\n");
+        textoPrompt.append("Caso o usuário peça mais exercicios,não use o formato de lista, JSON ou no formato de objeto.\n");
         textoPrompt.append("Esta é uma conversa contínua:\n");
 
         for (ChatTable chatTable : chatTableService.recoverChat()) {

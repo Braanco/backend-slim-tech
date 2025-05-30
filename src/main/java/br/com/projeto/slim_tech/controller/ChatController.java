@@ -18,8 +18,7 @@ public class ChatController {
 
     @PostMapping("/chat")
     public ResponseEntity chat(@RequestBody HistoricoRequest historicoRequest) {
-        System.out.println(historicoRequest.getContents().getLast().get("model"));
-        String chat = this.chatService.chat(historicoRequest.getContents(), historicoRequest.getMensagem());
+        String chat = this.chatService.chat(historicoRequest.getMensagem());
         return ResponseEntity.ok(chat);
     }
 }
